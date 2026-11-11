@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4ecd4"/>
+      <stop offset="55%" stop-color="#1a4a2e"/>
+      <stop offset="100%" stop-color="#06140e"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9a227"/>
+      <stop offset="100%" stop-color="#7a5a0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect x="0" y="558" width="1600" height="342" fill="#1a4a2e" opacity="0.55"/>
+  <g fill="#f4ecd4" opacity="0.22"><rect x="40" y="162" width="28" height="396" rx="2"/><rect x="88" y="162" width="28" height="396" rx="2"/><rect x="136" y="162" width="28" height="396" rx="2"/><rect x="184" y="162" width="28" height="396" rx="2"/><rect x="232" y="162" width="28" height="396" rx="2"/><rect x="280" y="162" width="28" height="396" rx="2"/><rect x="328" y="162" width="28" height="396" rx="2"/><rect x="376" y="162" width="28" height="396" rx="2"/><rect x="424" y="162" width="28" height="396" rx="2"/><rect x="472" y="162" width="28" height="396" rx="2"/><rect x="520" y="162" width="28" height="396" rx="2"/><rect x="568" y="162" width="28" height="396" rx="2"/></g>
+  <rect x="128" y="612" width="1344" height="72" rx="6" fill="url(#wood)"/>
+  <circle cx="1312" cy="162" r="108" fill="#c9a227" opacity="0.35"/>
+  <rect x="224" y="432" width="352" height="144" rx="4" fill="#f4ecd4" opacity="0.7"/>
+  <rect x="640" y="450" width="352" height="126" rx="4" fill="#f4ecd4" opacity="0.55"/>
+</svg>

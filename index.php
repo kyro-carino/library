@@ -1,0 +1,939 @@
+<?php
+require_once __DIR__ . '/includes/page.php';
+htmlPageHeaders();
+$v = static fn(string $f): int => assetVersion($f);
+$discoverView = 'dashboard';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FEU Roosevelt Library — Administration</title>
+<link rel="icon" type="image/png" href="img/favicon-64.png">
+<link rel="stylesheet" href="fonts/fonts.css?v=<?= $v('fonts/fonts.css') ?>">
+<link rel="stylesheet" href="style.css?v=<?= $v('style.css') ?>">
+<script src="js/theme-init.js?v=<?= $v('js/theme-init.js') ?>"></script>
+</head>
+<body>
+<noscript><p style="padding:24px;font-family:sans-serif;">The FEU Roosevelt Library dashboard needs JavaScript. Enable it in your browser and reload.</p></noscript>
+
+<!-- ============================================================
+     LOADING SEQUENCE
+     ============================================================ -->
+<div id="loading-screen" role="status" aria-live="polite" aria-label="Loading FEU Roosevelt Library">
+  <div class="loader-mark">
+    <div class="loader-line" id="loader-line-1"><span>FEU ROOSEVELT</span></div>
+    <div class="loader-line" id="loader-line-2"><span>LIBRARY</span></div>
+  </div>
+  <div class="loader-rule" id="loader-rule"></div>
+  <div class="loader-sub" id="loader-sub">There is always something worth discovering</div>
+</div>
+
+<section class="login-screen" id="login-screen" hidden aria-labelledby="login-title">
+  <section class="login-card">
+    <img class="login-logo" src="img/logo-112.png" alt="FEU Roosevelt" width="46" height="56">
+    <p class="login-kicker">FEU Roosevelt · Library</p>
+    <h1 id="login-title">Staff sign in</h1>
+    <p class="login-description">Sign in to open the library dashboard.</p>
+    <form id="login-form">
+      <div id="login-password-step">
+        <div class="field">
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" type="text" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+      </div>
+      <div id="login-totp-step" hidden>
+        <div class="field">
+          <label for="login-totp">Authenticator code</label>
+          <input id="login-totp" name="totp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9A-Fa-f ]{6,8}">
+          <div class="hint">Enter the 6-digit app code, or an 8-character backup code.</div>
+        </div>
+        <button class="btn btn-secondary btn-block" type="button" id="login-totp-back">Use a different account</button>
+      </div>
+      <p class="login-error" id="login-error" role="alert" hidden></p>
+      <button class="btn btn-primary login-submit" id="login-submit" type="submit">Sign in</button>
+    </form>
+    <p class="login-note">Administrator access is required. Contact your system administrator if you need an account.</p>
+  </section>
+</section>
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div id="app">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="nav-overlay" id="nav-overlay"></div>
+
+  <div class="shell">
+    <header class="app-header" id="app-header">
+      <div class="header-row">
+        <div class="header-left">
+          <button class="hamburger" id="hamburger-btn" aria-label="Open navigation" aria-expanded="false" aria-controls="menubar"><span></span></button>
+          <button class="brand" type="button" data-view="dashboard" aria-label="FEU Roosevelt Library — Home">
+            <img class="brand-logo" src="img/logo-112.png" alt="" width="36" height="44">
+          </button>
+        </div>
+        <nav class="menubar" id="menubar" aria-label="Primary">
+          <div class="menubar-mobile-head">
+            <img class="mobile-head-logo" src="img/logo-112.png" alt="FEU Roosevelt Library" width="40" height="48">
+            <button class="menubar-close" id="menubar-close-btn" aria-label="Close navigation">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <button class="menu-link active" type="button" data-view="dashboard" aria-current="page">Discover</button>
+          <div class="menu-drop" data-nav-group="books">
+            <button class="menu-link" type="button" aria-haspopup="true">Collection <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="dropdown-panel">
+              <button class="drop-item" type="button" data-view="books" data-books-tab="all">Browse All Books</button>
+              <button class="drop-item" type="button" data-view="books" data-books-tab="add">Add a Book</button>
+            </div>
+          </div>
+          <div class="menu-drop" data-nav-group="users">
+            <button class="menu-link" type="button" aria-haspopup="true">Users <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="dropdown-panel">
+              <button class="drop-item" type="button" data-view="users" data-users-tab="all">All Users</button>
+              <button class="drop-item" type="button" data-view="users" data-users-tab="add">Add Users</button>
+            </div>
+          </div>
+          <div class="menu-drop" data-nav-group="transactions">
+            <button class="menu-link" type="button" aria-haspopup="true">Transactions <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="dropdown-panel">
+              <button class="drop-item" type="button" data-view="issue">Issue Book</button>
+              <button class="drop-item" type="button" data-view="return">Return Book</button>
+            </div>
+          </div>
+          <div class="menu-drop" data-nav-group="reports">
+            <button class="menu-link" type="button" aria-haspopup="true">Reports <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="dropdown-panel">
+              <button class="drop-item" type="button" data-view="reports" data-report="borrowing">Borrowing Report</button>
+              <button class="drop-item" type="button" data-view="reports" data-report="overdue">Overdue Report</button>
+              <button class="drop-item" type="button" data-view="audit">Audit trail</button>
+            </div>
+          </div>
+          <button class="menu-link" type="button" data-view="settings">Settings</button>
+          <div class="menubar-mobile-foot">
+            <button class="menu-link" type="button" data-go="profile">Profile</button>
+          </div>
+        </nav>
+        <div class="header-actions">
+          <label class="search-global" for="global-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="global-search" type="text" placeholder="Search books, authors, subjects…" autocomplete="off" aria-label="Search books, authors, subjects">
+          </label>
+          <button class="icon-btn search-toggle" id="search-toggle-btn" aria-label="Search" aria-expanded="false" aria-controls="global-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+          <div class="header-pop" id="notif-pop">
+            <button class="icon-btn" id="notif-btn" aria-label="Notifications" aria-expanded="false" aria-controls="notif-menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+              <span class="notif-dot" id="notif-dot" hidden></span>
+            </button>
+            <div class="dropdown-panel notif-menu" id="notif-menu" hidden>
+              <div class="drop-head">Notifications</div>
+              <div id="notif-list"></div>
+            </div>
+          </div>
+          <div class="header-pop">
+            <button class="avatar-btn" id="avatar-btn" aria-label="Account menu" aria-expanded="false" aria-controls="profile-menu">
+              <span class="avatar-chip" id="header-avatar">LA</span>
+            </button>
+            <div class="dropdown-panel profile-menu" id="profile-menu" hidden>
+              <div class="profile-menu-head">
+                <span class="avatar-chip sm" id="menu-avatar">LA</span>
+                <div>
+                  <div class="pm-name" id="menu-name">Library Administrator</div>
+                  <div class="pm-user" id="menu-user">@admin</div>
+                </div>
+              </div>
+              <button class="drop-item" type="button" data-go="profile">Profile</button>
+              <button class="drop-item" type="button" data-go="settings">Settings</button>
+              <button class="drop-item" type="button" id="menu-theme-toggle">Dark Mode</button>
+              <button class="drop-item danger" type="button" id="menu-logout">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="main">
+      <main class="view-port" id="main-content" tabindex="-1">
+
+        <!-- ========================= DASHBOARD ========================= -->
+        <section class="view active" id="view-dashboard" data-view="dashboard">
+
+          <!-- ========================= HERO ========================= -->
+          <div class="site-hero" id="site-hero">
+            <div class="site-hero-copy">
+              <div class="site-hero-eyebrow">FEU Roosevelt Library</div>
+              <h1 class="site-hero-heading">There is always something worth discovering.</h1>
+              <p class="site-hero-sub">Explore the FEU Roosevelt Library collection, find your next book, and follow your curiosity.</p>
+              <form class="site-hero-search" id="hero-search-form" role="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="hero-search-input" placeholder="Search books, authors, subjects…" autocomplete="off" aria-label="Search books, authors, subjects">
+                <button type="submit" class="btn btn-primary hero-search-btn">Search</button>
+              </form>
+            </div>
+            <div class="site-hero-visual">
+              <div class="hero-emblem">
+                <img src="img/logo-tamaraw.png" alt="FEU Roosevelt Tamaraw" width="400" height="567">
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================= FEATURED COLLECTION ========================= -->
+          <section class="site-section" aria-labelledby="featured-heading">
+            <div class="site-section-head">
+              <div>
+                <h2 class="site-section-heading" id="featured-heading">Featured collection</h2>
+                <p class="site-section-sub">Books selected for curious minds.</p>
+              </div>
+            </div>
+            <div class="book-row" id="featured-collection-grid"></div>
+          </section>
+
+          <!-- ========================= LIBRARY PHOTO ========================= -->
+          <section class="site-section library-photo-section" aria-label="The FEU Roosevelt Library building">
+            <div class="library-photo-frame">
+              <div class="library-photo-media">
+                <img class="library-photo-img" src="https://images.unsplash.com/photo-1760166699654-5d0e10f51994?auto=format&amp;fit=crop&amp;w=1800&amp;q=80" alt="A warm, light-filled reading room inside the FEU Roosevelt Library" loading="lazy">
+              </div>
+              <div class="library-photo-caption">
+                <span class="library-photo-eyebrow">Our home</span>
+                <span class="library-photo-line">FEU Roosevelt Library</span>
+                <p class="library-photo-body">A quiet, light-filled space built for reading, research, and everything in between.</p>
+                <button class="btn library-photo-cta" type="button" data-anchor="about">
+                  Learn more
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ========================= LIBRARY SERVICES ========================= -->
+          <section class="site-section services-section" id="services" aria-labelledby="services-heading">
+            <div class="site-section-head">
+              <div>
+                <h2 class="site-section-heading" id="services-heading">Library services</h2>
+                <p class="site-section-sub">Everything the collection offers, beyond the shelves.</p>
+              </div>
+            </div>
+            <div class="services-grid">
+              <div class="service-card">
+                <div class="service-card-photo"><img src="https://images.unsplash.com/photo-1614849963640-9cc74b2a826f?auto=format&amp;fit=crop&amp;w=600&amp;q=75" alt="" loading="lazy"></div>
+                <div class="service-card-body">
+                  <div class="service-index">01</div>
+                  <h3>Borrowing</h3>
+                  <p id="svc-borrowing-text">Take home titles from the collection, with straightforward loan periods for students and faculty.</p>
+                </div>
+              </div>
+              <div class="service-card">
+                <div class="service-card-photo"><img src="https://images.unsplash.com/photo-1544640808-32ca72ac7f37?auto=format&amp;fit=crop&amp;w=600&amp;q=75" alt="" loading="lazy"></div>
+                <div class="service-card-body">
+                  <div class="service-index">02</div>
+                  <h3>Reservations</h3>
+                  <p>Hold a title that's out on loan and we'll set it aside the moment it's returned.</p>
+                </div>
+              </div>
+              <div class="service-card">
+                <div class="service-card-photo"><img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&amp;fit=crop&amp;w=600&amp;q=75" alt="" loading="lazy"></div>
+                <div class="service-card-body">
+                  <div class="service-index">03</div>
+                  <h3>Visit us</h3>
+                  <p id="svc-contact-text">Visit the front desk for help finding a title.</p>
+                </div>
+              </div>
+              <div class="service-card">
+                <div class="service-card-photo"><img src="https://images.unsplash.com/photo-1521920592574-49e0b121c964?auto=format&amp;fit=crop&amp;w=600&amp;q=75" alt="" loading="lazy"></div>
+                <div class="service-card-body">
+                  <div class="service-index">04</div>
+                  <h3>Research assistance</h3>
+                  <p>Sit down with a librarian to shape a search, a citation list, or a reading path.</p>
+                </div>
+              </div>
+              <div class="service-card">
+                <div class="service-card-photo"><img src="https://images.unsplash.com/photo-1656849093674-937910978e7a?auto=format&amp;fit=crop&amp;w=600&amp;q=75" alt="" loading="lazy"></div>
+                <div class="service-card-body">
+                  <div class="service-index">05</div>
+                  <h3>Digital resources</h3>
+                  <p>Journals, archives, and databases available on and off campus with your student account.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ========================= EDITORIAL STATEMENT ========================= -->
+          <section class="editorial-statement" id="about" aria-label="Library statement">
+            <p>Read widely.<br>Think deeply.</p>
+            <span class="editorial-rule"></span>
+            <p class="editorial-sub">A good library changes what you notice.</p>
+          </section>
+
+          <!-- ========================= FOOTER ========================= -->
+          <footer class="site-footer">
+            <div class="site-footer-top">
+              <div class="site-footer-brand">
+                <span class="mark">FEU Roosevelt</span>
+                <span class="tag">Library</span>
+              </div>
+              <div class="site-footer-col">
+                <div class="site-footer-label">Navigate</div>
+                <button type="button" data-view="dashboard">Discover</button>
+                <button type="button" data-view="books">Collection</button>
+                <button type="button" data-anchor="services">Services</button>
+                <button type="button" data-anchor="about">About</button>
+              </div>
+              <div class="site-footer-col">
+                <div class="site-footer-label">Visit</div>
+                <span id="footer-address"></span>
+                <span id="footer-phone"></span>
+                <span id="footer-email"></span>
+              </div>
+            </div>
+            <div class="site-footer-bottom">
+              <span>&copy; <span id="footer-year">2026</span> FEU Roosevelt Library. All rights reserved. Made by Mikhail D. Pabular - Kyro Carino - John Patrick De Luna - Dirk Martin Sotto</span>
+            </div>
+          </footer>
+        </section>
+
+        <!-- ========================= BOOKS / COLLECTION ========================= -->
+        <section class="view" id="view-books" data-view="books">
+
+          <div class="collection-hero">
+            <div class="collection-hero-top">
+              <div class="collection-hero-copy">
+                <div class="view-eyebrow">Module 01 &middot; Catalog</div>
+                <h1 class="collection-hero-heading" id="books-hero-heading">Explore the collection</h1>
+                <p class="collection-hero-sub" id="books-hero-sub">Find stories, ideas, and perspectives across the FEU Roosevelt Library.</p>
+              </div>
+            </div>
+
+            <div class="collection-search-wrap" id="collection-search-wrap">
+              <label class="collection-search" for="books-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="books-search" type="text" placeholder="Search books, authors, subjects…" autocomplete="off">
+                <button type="button" class="collection-search-clear" id="books-search-clear" hidden aria-label="Clear search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+              </label>
+              <div class="search-suggestions" id="books-search-suggestions" hidden></div>
+            </div>
+
+            <div class="category-quick-list" id="books-category-list" role="group" aria-label="Filter by subject">
+              <button type="button" class="category-pill active" data-category="all">All subjects</button>
+              <button type="button" class="category-pill" data-category="Literature">Literature</button>
+              <button type="button" class="category-pill" data-category="Science">Science</button>
+              <button type="button" class="category-pill" data-category="History">History</button>
+              <button type="button" class="category-pill" data-category="Philosophy">Philosophy</button>
+              <button type="button" class="category-pill" data-category="Technology">Technology</button>
+              <button type="button" class="category-pill" data-category="Psychology">Psychology</button>
+              <button type="button" class="category-pill" data-category="Arts">Arts</button>
+              <button type="button" class="category-pill" data-category="Business">Business</button>
+              <button type="button" class="category-pill" data-category="Mathematics">Mathematics</button>
+              <button type="button" class="category-pill" data-category="Computer Science">Computer Science</button>
+              <button type="button" class="category-pill" data-category="Education">Education</button>
+              <button type="button" class="category-pill" data-category="Social Sciences">Social Sciences</button>
+            </div>
+          </div>
+
+          <div class="collection-toolbar">
+            <p class="collection-count" id="books-count-sub">&mdash; volumes in the collection</p>
+            <div class="collection-toolbar-actions">
+              <div class="filters-wrap">
+                <button type="button" class="filter-toggle" id="books-filter-toggle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                  Filters
+                </button>
+                <div class="filters-backdrop" id="books-filters-backdrop"></div>
+                <div class="filters-panel" id="books-filters-panel"></div>
+              </div>
+              <select class="sort-select" id="books-sort" aria-label="Sort books">
+                <option value="featured">Featured</option>
+                <option value="newest">Newest</option>
+                <option value="title">Title</option>
+                <option value="author">Author</option>
+                <option value="popular">Most popular</option>
+              </select>
+              <button class="btn btn-primary btn-sm collection-admin-btn" type="button" id="collection-admin-add-book">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Add book
+              </button>
+            </div>
+          </div>
+
+          <div class="book-grid" id="books-grid"></div>
+
+          <div class="load-more-wrap" id="books-more-wrap" hidden><button class="btn btn-secondary" type="button" id="books-more">Show more</button></div>
+
+          <div class="collection-empty" id="books-empty" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <div class="t">No books found.</div>
+            <div class="s">Try another title, author, or subject.</div>
+            <button class="btn btn-secondary btn-sm" type="button" id="books-empty-clear">Clear search</button>
+          </div>
+        </section>
+
+        <!-- ========================= BOOK DETAILS ========================= -->
+        <section class="view" id="view-book-details" data-view="book-details">
+          <button type="button" class="bd-back" data-view="books">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+            Back to collection
+          </button>
+
+          <div class="bd-notfound" id="bd-notfound" hidden>
+            <div class="t">This book isn't in the catalog.</div>
+            <div class="s">It may have been removed from the collection. Try browsing instead.</div>
+            <button class="btn btn-primary" type="button" data-view="books">Browse the collection</button>
+          </div>
+
+          <div id="bd-content">
+            <div class="book-details-layout">
+              <div class="bd-cover-wrap">
+                <div class="bd-cover" id="bd-cover">
+                  <span class="bd-cover-initial" id="bd-cover-initial"></span>
+                </div>
+              </div>
+              <div class="bd-info">
+                <div class="bd-category" id="bd-category"></div>
+                <h1 class="bd-title" id="bd-title"></h1>
+                <p class="bd-author" id="bd-author"></p>
+                <div class="bd-availability" id="bd-availability"></div>
+                <p class="bd-description" id="bd-description"></p>
+                <div class="bd-actions" id="bd-actions">
+                  <button class="btn btn-primary" type="button" id="bd-primary-action" hidden>Issue this book</button>
+                </div>
+                <div class="bd-meta" id="bd-meta"></div>
+                <div class="bd-admin-links">
+                  <button type="button" id="bd-edit-link">Edit record</button>
+                  <span aria-hidden="true">&middot;</span>
+                  <button type="button" id="bd-remove-link">Remove from catalog</button>
+                </div>
+              </div>
+            </div>
+
+            <section class="related-books-section" id="bd-related-section" hidden aria-labelledby="bd-related-heading">
+              <div class="site-section-head">
+                <div>
+                  <h2 class="site-section-heading" id="bd-related-heading">More like this</h2>
+                  <p class="site-section-sub">Other volumes in the same subject.</p>
+                </div>
+              </div>
+              <div class="book-row" id="bd-related-grid"></div>
+            </section>
+
+            <section class="recently-viewed-section" id="bd-recent-section" hidden aria-labelledby="bd-recent-heading">
+              <div class="site-section-head">
+                <div>
+                  <h2 class="site-section-heading" id="bd-recent-heading">Recently viewed</h2>
+                </div>
+              </div>
+              <div class="book-row" id="bd-recent-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ========================= USERS ========================= -->
+        <section class="view" id="view-users" data-view="users">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Module 02</div>
+              <h1 class="view-heading">Users</h1>
+              <p class="view-sub" id="users-count-sub">&mdash; registered patrons</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-primary" id="open-add-user">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Add User
+              </button>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <label class="search-field" for="users-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="users-search" type="text" placeholder="Search name, ID, program…" autocomplete="off">
+            </label>
+            <div class="filter-chips" id="users-filter-chips" role="group" aria-label="Filter users by status">
+              <button class="chip active" data-filter="all">All</button>
+              <button class="chip" data-filter="Active">Active</button>
+              <button class="chip" data-filter="Inactive">Inactive</button>
+            </div>
+            <div class="toolbar-spacer"></div>
+            <select class="sort-select" id="users-sort" aria-label="Sort users">
+              <option value="name-asc">Name A&ndash;Z</option>
+              <option value="name-desc">Name Z&ndash;A</option>
+              <option value="books-desc">Most Borrowed</option>
+            </select>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table" id="users-table">
+              <thead>
+                <tr>
+                  <th scope="col">Student number</th><th scope="col">Name</th><th scope="col">Program</th><th scope="col">Year</th><th scope="col">Books</th><th scope="col">Status</th><th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-list" id="users-card-list"></div>
+          <div class="load-more-wrap" id="users-more-wrap" hidden><button class="btn btn-secondary" type="button" id="users-more">Show more</button></div>
+          <div class="empty-state" id="users-empty" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20.2c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg>
+            <div class="t">No matching patrons</div>
+            <div class="s">No registered user matches that search or filter just yet.</div>
+          </div>
+        </section>
+
+        <!-- ========================= ISSUE BOOK ========================= -->
+        <section class="view" id="view-issue" data-view="issue">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Module 03</div>
+              <h1 class="view-heading">Issue a Book</h1>
+              <p class="view-sub">Find a student, pick an available title, then confirm the loan.</p>
+            </div>
+            <p class="issue-kbd"><kbd>&uarr;</kbd> <kbd>&darr;</kbd> move &middot; <kbd>Enter</kbd> select &middot; <kbd>Esc</kbd> clear &middot; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> issue</p>
+          </div>
+
+          <div class="issue-desk">
+            <section class="card issue-pane" id="issue-pane-student" aria-labelledby="issue-lbl-student">
+              <div class="issue-lbl" id="issue-lbl-student"><i id="issue-num-student">1</i>Student</div>
+              <div class="issue-sel" id="issue-student-selected" hidden></div>
+              <div id="issue-student-find">
+                <label class="search-field issue-search" for="issue-student-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="issue-student-search" type="search" placeholder="Name or student ID…" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="issue-student-list" aria-autocomplete="list">
+                </label>
+                <div class="issue-list" id="issue-student-list" role="listbox" aria-label="Students"></div>
+              </div>
+              <div class="issue-msg" id="issue-student-msg" role="status"></div>
+            </section>
+
+            <section class="card issue-pane" id="issue-pane-book" aria-labelledby="issue-lbl-book">
+              <div class="issue-lbl" id="issue-lbl-book"><i id="issue-num-book">2</i>Book</div>
+              <div class="issue-sel" id="issue-book-selected" hidden></div>
+              <div id="issue-book-find">
+                <label class="search-field issue-search" for="issue-book-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="issue-book-search" type="search" placeholder="Title, author, subject or shelf…" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="issue-book-list" aria-autocomplete="list">
+                </label>
+                <div class="issue-filters"><button type="button" class="chip active" id="issue-avail" aria-pressed="true">Available only</button><button type="button" class="chip" id="issue-requested" aria-pressed="false">Requested books only</button></div>
+                <div class="issue-list" id="issue-book-list" role="listbox" aria-label="Books"></div>
+              </div>
+              <div class="issue-msg" id="issue-book-msg" role="status"></div>
+            </section>
+          </div>
+
+          <div class="card issue-bar" id="issue-bar">
+            <div class="issue-sum" id="issue-summary" aria-live="polite"></div>
+            <div class="field"><label for="issue-date">Issue Date</label><input type="date" id="issue-date"></div>
+            <div class="field"><label for="issue-due-date">Due Date</label><input type="date" id="issue-due-date"></div>
+            <label class="issue-keep"><input type="checkbox" id="issue-keep" checked> Keep student for the next loan</label>
+            <button class="btn btn-primary" id="issue-confirm-btn" type="button" disabled>Confirm &amp; issue</button>
+            <div class="issue-error" id="issue-error" role="alert" hidden></div>
+          </div>
+
+          <div class="card issue-result" id="issue-result" hidden>
+            <div class="stamp stamp-green" id="issue-stamp">ISSUED</div>
+            <div class="stamp-caption" id="issue-final-caption"></div>
+          </div>
+          <div class="issue-log" id="issue-log"></div>
+        </section>
+
+        <!-- ========================= RETURN BOOK ========================= -->
+        <section class="view" id="view-return" data-view="return">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Module 04</div>
+              <h1 class="view-heading">Return a Book</h1>
+              <p class="view-sub">Find the borrowed title, review the due date, and settle any fine.</p>
+            </div>
+            <p class="issue-kbd"><kbd>&uarr;</kbd> <kbd>&darr;</kbd> move &middot; <kbd>Enter</kbd> select &middot; <kbd>Esc</kbd> clear &middot; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> return</p>
+          </div>
+
+          <div class="issue-desk">
+            <section class="card issue-pane" id="return-pane-loan" aria-labelledby="return-lbl-loan">
+              <div class="issue-lbl" id="return-lbl-loan"><i id="return-num-loan">1</i>Borrowed title</div>
+              <div class="issue-sel" id="return-loan-selected" hidden></div>
+              <div id="return-loan-find">
+                <label class="search-field issue-search" for="return-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="return-search" type="search" placeholder="Title or borrower…" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="return-loan-list" aria-autocomplete="list">
+                </label>
+                <div class="issue-list" id="return-loan-list" role="listbox" aria-label="Borrowed titles"></div>
+              </div>
+              <div class="issue-msg" id="return-loan-msg" role="status"></div>
+            </section>
+
+            <section class="card issue-pane" id="return-pane-details" aria-labelledby="return-lbl-details">
+              <div class="issue-lbl" id="return-lbl-details"><i id="return-num-details">2</i>Loan details</div>
+              <div class="issue-empty" id="return-details-empty">Select a borrowed title to review the patron, dates and any fine.</div>
+              <div id="return-details-body" hidden>
+                <div class="return-facts" id="return-facts"></div>
+                <div class="form-grid return-dates">
+                  <div class="field"><label for="return-issue-date-display">Issue Date</label><input type="text" id="return-issue-date-display" readonly></div>
+                  <div class="field"><label for="return-due-date-display">Due Date</label><input type="text" id="return-due-date-display" readonly></div>
+                  <div class="field"><label for="return-days-overdue">Days Overdue</label><input type="text" id="return-days-overdue" readonly></div>
+                </div>
+                <div class="fine-box return-fine">
+                  <div class="fb-label">Calculated Fine</div>
+                  <div class="fb-amount" id="return-fine-amount">₱0</div>
+                  <div class="fb-detail" id="return-fine-detail">No overdue days &middot; ₱10.00 / day</div>
+                </div>
+                <div class="return-renew">
+                  <div class="return-renew-info" id="return-renew-info" role="status"></div>
+                  <button class="btn btn-secondary" id="return-renew-btn" type="button">Renew loan</button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="card issue-bar" id="return-bar">
+            <div class="issue-sum" id="return-summary" aria-live="polite"></div>
+            <div class="field"><label for="return-date-input">Return Date</label><input type="date" id="return-date-input"></div>
+            <button class="btn btn-primary" id="return-confirm-btn" type="button" disabled>Confirm return</button>
+            <div class="issue-error" id="return-error" role="alert" hidden></div>
+          </div>
+
+          <div class="card issue-result" id="return-result" hidden>
+            <div class="stamp" id="return-stamp">RETURNED</div>
+            <div class="stamp-caption" id="return-final-caption"></div>
+            <button class="btn btn-secondary" type="button" id="return-restart-btn">Return another book</button>
+          </div>
+          <div class="issue-log" id="return-log"></div>
+        </section>
+
+        <!-- ========================= REPORTS ========================= -->
+        <section class="view" id="view-reports" data-view="reports">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Reports</div>
+              <h1 class="view-heading" id="reports-heading">Borrowing Report</h1>
+              <p class="view-sub" id="reports-sub">A running ledger of activity across the collection.</p>
+            </div>
+          </div>
+          <div class="od-cards" id="overdue-cards" hidden></div>
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title reports-panel-title" id="reports-panel-title">Borrowing over the last 7 days</div>
+              <div class="panel-note" id="reports-note">Live data</div>
+            </div>
+            <div class="chart-wrap" id="reports-chart-wrap" aria-live="polite"></div>
+          </div>
+          <div class="table-card" style="margin-top:18px;">
+            <div class="toolbar od-toolbar" id="overdue-toolbar" hidden></div>
+            <table class="data-table" id="reports-table">
+              <thead><tr id="reports-thead-row"></tr></thead>
+              <tbody id="reports-tbody"></tbody>
+            </table>
+            <div class="card-list od-card-list" id="overdue-card-list" hidden></div>
+            <div class="od-foot" id="overdue-foot" hidden></div>
+          </div>
+        </section>
+
+        <!-- ========================= AUDIT TRAIL ========================= -->
+        <section class="view" id="view-audit" data-view="audit">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Reports</div>
+              <h1 class="view-heading" id="audit-heading">Audit Trail</h1>
+              <p class="view-sub" id="audit-sub">Who did what and when. Entries cannot be edited or deleted.</p>
+            </div>
+          </div>
+          <div class="table-card">
+            <div class="toolbar od-toolbar" id="audit-toolbar" style="padding:14px 18px 0;"></div>
+            <table class="data-table" id="audit-table">
+              <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Activity</th><th scope="col">Details</th><th scope="col">Fine</th></tr></thead>
+              <tbody id="audit-tbody"></tbody>
+            </table>
+            <div class="card-list od-card-list" id="audit-card-list"></div>
+            <div class="od-foot" id="audit-foot"></div>
+          </div>
+        </section>
+
+        <!-- ========================= SETTINGS ========================= -->
+        <section class="view" id="view-settings" data-view="settings">
+          <div class="view-head">
+            <div>
+              <div class="view-eyebrow">Settings</div>
+              <h1 class="view-heading">Settings</h1>
+              <p class="view-sub">Manage your profile, appearance and library preferences.</p>
+            </div>
+            <div class="view-actions">
+              <button class="btn btn-secondary" type="button" id="settings-reset-btn">Reset to Defaults</button>
+            </div>
+          </div>
+
+          <div class="settings-layout">
+            <nav class="settings-nav" id="settings-nav" aria-label="Settings sections">
+              <button class="settings-nav-item active" type="button" data-settings="profile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20.2c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg>
+                Profile
+              </button>
+              <button class="settings-nav-item" type="button" data-settings="appearance">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+                Appearance
+              </button>
+              <button class="settings-nav-item" type="button" data-settings="library">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Library
+              </button>
+              <button class="settings-nav-item" type="button" data-settings="notifications">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+                Notifications
+              </button>
+              <button class="settings-nav-item" type="button" data-settings="security">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                Security
+              </button>
+              <button class="settings-nav-item" type="button" data-settings="system">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+                System
+              </button>
+            </nav>
+
+            <div class="settings-content">
+              <div class="settings-pane active" id="settings-pane-profile">
+                <div class="profile-card">
+                  <div class="profile-avatar-wrap">
+                    <span class="avatar-chip xl" id="profile-avatar">AL</span>
+                    <button class="avatar-edit" type="button" id="avatar-edit-btn" aria-label="Change profile picture">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    </button>
+                    <input type="file" id="avatar-file" accept="image/*" hidden>
+                  </div>
+                  <div class="profile-card-main">
+                    <h3 id="profile-card-name">Library Administrator</h3>
+                    <p class="profile-handle" id="profile-card-handle">@admin</p>
+                    <div class="profile-badges">
+                      <span class="badge badge-active" id="profile-role-badge">admin</span>
+                      <span class="badge badge-available" id="profile-status-badge">Active</span>
+                    </div>
+                  </div>
+                  <button class="btn btn-primary" type="button" id="edit-profile-btn">Edit Profile</button>
+                </div>
+                <form class="settings-form" id="profile-form">
+                  <div class="form-grid">
+                    <div class="field"><label for="profile-name">Display name</label><input id="profile-name" type="text" autocomplete="name" disabled><div class="err"></div></div>
+                    <div class="field"><label for="profile-username">Username</label><input id="profile-username" type="text" autocomplete="username" disabled><div class="err"></div></div>
+                    <div class="field"><label for="profile-email">Email</label><input id="profile-email" type="email" autocomplete="email" disabled><div class="err"></div></div>
+                    <div class="field">
+                      <label for="profile-role">Role</label>
+                      <input id="profile-role" type="text" readonly>
+                      <div class="hint">Assigned by the library administrator.</div>
+                    </div>
+                    <div class="field">
+                      <label for="profile-status">Account status</label>
+                      <input id="profile-status" type="text" readonly>
+                    </div>
+                  </div>
+                  <div class="view-actions" id="profile-form-actions" hidden>
+                    <button class="btn btn-secondary" type="button" id="profile-cancel-btn">Cancel</button>
+                    <button class="btn btn-primary" type="submit" id="profile-save-btn">Save profile</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="settings-pane" id="settings-pane-appearance">
+                <p class="settings-lead">Choose how the reading room looks on this device. Preference is saved locally.</p>
+                <div class="theme-grid" id="theme-grid">
+                  <button class="theme-card" type="button" data-theme-pref="light">
+                    <span class="theme-preview light"></span>
+                    <strong>Light Mode</strong>
+                    <span>Paper canvas, green type</span>
+                  </button>
+                  <button class="theme-card" type="button" data-theme-pref="dark">
+                    <span class="theme-preview dark"></span>
+                    <strong>Dark Mode</strong>
+                    <span>Forest surfaces, gold accents</span>
+                  </button>
+                  <button class="theme-card" type="button" data-theme-pref="system">
+                    <span class="theme-preview system"></span>
+                    <strong>System Default</strong>
+                    <span>Follows the device setting</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="settings-pane" id="settings-pane-library">
+                <p class="settings-lead">Circulation rules and contact details. Saved to the library database.</p>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="settings-library-name">Library name</label>
+                    <input type="text" id="settings-library-name">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-library-email">Library email</label>
+                    <input type="email" id="settings-library-email">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-library-phone">Contact number</label>
+                    <input type="text" id="settings-library-phone">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-library-address">Address</label>
+                    <input type="text" id="settings-library-address">
+                  </div>
+                  <div class="field">
+                    <label for="settings-loan-days">Default borrowing period (days)</label>
+                    <input type="number" id="settings-loan-days" min="1" step="1">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-max-books">Maximum books allowed</label>
+                    <input type="number" id="settings-max-books" min="1" step="1">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-fine-rate">Fine per overdue day (₱)</label>
+                    <input type="number" id="settings-fine-rate" min="0" step="0.5">
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="settings-max-renewals">Maximum renewals</label>
+                    <input type="number" id="settings-max-renewals" min="0" step="1">
+                    <div class="err"></div>
+                  </div>
+                </div>
+                <label class="switch-row">
+                  <input type="checkbox" id="settings-fines-enabled">
+                  <span class="switch-ui"></span>
+                  <span>Enable overdue fines</span>
+                  <span class="onoff" data-for="settings-fines-enabled">ON</span>
+                </label>
+                <button class="btn btn-primary" type="button" id="settings-save-btn">Save Library Settings</button>
+              </div>
+
+              <div class="settings-pane" id="settings-pane-notifications">
+                <p class="settings-lead">Choose which alerts appear in the notification menu. Nothing is emailed.</p>
+                <label class="switch-row"><input type="checkbox" id="notif-due"><span class="switch-ui"></span><span>Due Date Reminders</span><span class="onoff">ON</span></label>
+                <label class="switch-row"><input type="checkbox" id="notif-overdue"><span class="switch-ui"></span><span>Overdue Book Alerts</span><span class="onoff">ON</span></label>
+                <label class="switch-row"><input type="checkbox" id="notif-newuser"><span class="switch-ui"></span><span>New User Notifications</span><span class="onoff">OFF</span></label>
+                <label class="switch-row"><input type="checkbox" id="notif-returns"><span class="switch-ui"></span><span>Book Return Notifications</span><span class="onoff">ON</span></label>
+                <label class="switch-row"><input type="checkbox" id="notif-system"><span class="switch-ui"></span><span>System Announcements</span><span class="onoff">ON</span></label>
+                <button class="btn btn-primary" type="button" id="notif-prefs-save">Save Notification Preferences</button>
+              </div>
+
+              <div class="settings-pane" id="settings-pane-security">
+                <p class="settings-lead">Change the password for your staff account.</p>
+                <div class="panel security-card">
+                  <div class="panel-title">Session</div>
+                  <div class="security-row"><span>Last login</span><b id="security-last-login">—</b></div>
+                  <div class="security-row"><span>Device</span><b>This browser</b></div>
+                  <div class="security-row"><span>Session</span><b>Active</b></div>
+                </div>
+                <div class="form-grid" style="margin-top:18px;">
+                  <div class="field">
+                    <label for="sec-current-pass">Current password</label>
+                    <div class="pw-wrap">
+                      <input id="sec-current-pass" type="password" autocomplete="current-password">
+                      <button class="pw-toggle" type="button" data-pw="sec-current-pass" aria-label="Show password">Show</button>
+                    </div>
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="sec-new-pass">New password</label>
+                    <div class="pw-wrap">
+                      <input id="sec-new-pass" type="password" autocomplete="new-password">
+                      <button class="pw-toggle" type="button" data-pw="sec-new-pass" aria-label="Show password">Show</button>
+                    </div>
+                    <div class="pw-meter" aria-hidden="true"><span id="pw-meter-bar"></span></div>
+                    <div class="hint" id="pw-meter-label">Use 10 or more characters.</div>
+                    <div class="err"></div>
+                  </div>
+                  <div class="field">
+                    <label for="sec-confirm-pass">Confirm new password</label>
+                    <div class="pw-wrap">
+                      <input id="sec-confirm-pass" type="password" autocomplete="new-password">
+                      <button class="pw-toggle" type="button" data-pw="sec-confirm-pass" aria-label="Show password">Show</button>
+                    </div>
+                    <div class="err"></div>
+                  </div>
+                </div>
+                <div class="view-actions" style="margin-top:8px;">
+                  <button class="btn btn-primary" type="button" id="sec-change-pass">Change password</button>
+                  <button class="btn btn-secondary" type="button" id="sec-logout-one">Sign out of this device</button>
+                </div>
+              </div>
+
+              <div class="settings-pane" id="settings-pane-system">
+                <p class="settings-lead">Display and list preferences, saved to the library database.</p>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="sys-date-format">Date format</label>
+                    <select id="sys-date-format">
+                      <option value="short">Short (Aug 27, 2026)</option>
+                      <option value="long">Long (Thursday, August 27, 2026)</option>
+                      <option value="iso">ISO (2026-08-27)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="sys-time-format">Time format</label>
+                    <select id="sys-time-format">
+                      <option value="12h">12-hour</option>
+                      <option value="24h">24-hour</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="sys-landing">Default landing page</label>
+                    <select id="sys-landing">
+                      <option value="dashboard">Dashboard</option>
+                      <option value="books">Books</option>
+                      <option value="users">Users</option>
+                      <option value="issue">Issue Book</option>
+                      <option value="reports">Reports</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="sys-page-size">Users per page</label>
+                    <select id="sys-page-size">
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="sys-density">Interface density</label>
+                    <select id="sys-density">
+                      <option value="comfortable">Comfortable</option>
+                      <option value="compact">Compact</option>
+                    </select>
+                  </div>
+                </div>
+                <label class="switch-row">
+                  <input type="checkbox" id="sys-confirm-delete">
+                  <span class="switch-ui"></span>
+                  <span>Confirmation before deleting records</span>
+                  <span class="onoff">ON</span>
+                </label>
+                <button class="btn btn-primary" type="button" id="sys-save-btn">Save system preferences</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL ROOTS (populated dynamically)
+     ============================================================ -->
+<div id="modal-root"></div>
+<div id="confirm-root"></div>
+<div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+<script src="js/vendor/gsap.min.js?v=<?= $v('js/vendor/gsap.min.js') ?>"></script>
+<script src="script.js?v=<?= $v('script.js') ?>"></script>
+</body>
+</html>

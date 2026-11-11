@@ -1,0 +1,256 @@
+-- ==============================================================================
+-- FEU Roosevelt Library Admin Dashboard — MySQL Schema + seed data
+-- IDs match the frontend generators: BK-0001, 2025-001, TX-0001
+-- ==============================================================================
+
+CREATE DATABASE IF NOT EXISTS feu_library
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+USE feu_library;
+
+-- Create tables first, then seed, then foreign keys.
+
+CREATE TABLE IF NOT EXISTS books (
+  id VARCHAR(20) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  author VARCHAR(255) NOT NULL,
+  category VARCHAR(100),
+  isbn VARCHAR(20),
+  year INT,
+  location VARCHAR(20),
+  status ENUM('Available','Borrowed','Overdue') DEFAULT 'Available',
+  borrowed_by VARCHAR(20),
+  issue_date DATE,
+  due_date DATE,
+  description TEXT,
+  format ENUM('Hardcover','Paperback','E-book','Audiobook'),
+  cover_url TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_status (status),
+  INDEX idx_borrowed_by (borrowed_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(20) PRIMARY KEY,
+  last_name VARCHAR(100) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  middle_initial VARCHAR(2),
+  program VARCHAR(100),
+  year_level INT,
+  contact VARCHAR(255),
+  status ENUM('Active','Inactive') DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id VARCHAR(20) PRIMARY KEY,
+  type ENUM('issue','return') NOT NULL,
+  book_id VARCHAR(20),
+  book_title VARCHAR(255) NOT NULL,
+  user_id VARCHAR(20),
+  user_name VARCHAR(255) NOT NULL,
+  issue_date DATE NOT NULL,
+  due_date DATE,
+  return_date DATE,
+  fine DECIMAL(10, 2) DEFAULT 0,
+  status ENUM('Borrowed','Overdue','Returned') DEFAULT 'Borrowed',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_book_id (book_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_type (type),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS settings (
+  id INT PRIMARY KEY DEFAULT 1,
+  fine_per_day DECIMAL(10, 2) DEFAULT 10,
+  loan_days INT DEFAULT 7,
+  max_books_per_user INT DEFAULT 5,
+  max_renewals INT DEFAULT 2,
+  grace_period_days INT DEFAULT 1,
+  overdue_fines_enabled BOOLEAN DEFAULT TRUE,
+  date_format VARCHAR(20) DEFAULT 'short',
+  time_format VARCHAR(10) DEFAULT '12h',
+  page_size INT DEFAULT 25,
+  language VARCHAR(10) DEFAULT 'en',
+  confirm_deletes BOOLEAN DEFAULT TRUE,
+  landing_page VARCHAR(50) DEFAULT 'dashboard',
+  density VARCHAR(20) DEFAULT 'comfortable',
+  library_name VARCHAR(255),
+  library_email VARCHAR(255),
+  library_phone VARCHAR(20),
+  library_address TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_id CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS account (
+  id INT PRIMARY KEY DEFAULT 1,
+  display_name VARCHAR(255),
+  username VARCHAR(100),
+  email VARCHAR(255),
+  role VARCHAR(50),
+  status VARCHAR(20) DEFAULT 'Active',
+  avatar_data_url LONGTEXT,
+  avatar_preset VARCHAR(50),
+  last_login DATETIME,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_id_account CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS notif_prefs (
+  id INT PRIMARY KEY DEFAULT 1,
+  due_notification BOOLEAN DEFAULT TRUE,
+  overdue_notification BOOLEAN DEFAULT TRUE,
+  new_user_notification BOOLEAN DEFAULT FALSE,
+  returns_notification BOOLEAN DEFAULT TRUE,
+  system_notification BOOLEAN DEFAULT TRUE,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT chk_id_notifs CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==============================================================================
+-- SEED DATA
+-- ==============================================================================
+
+-- Insert default settings
+INSERT INTO settings (id, fine_per_day, loan_days, max_books_per_user, max_renewals, 
+  grace_period_days, overdue_fines_enabled, date_format, time_format, page_size, language, 
+  confirm_deletes, landing_page, density, library_name, library_email, library_phone, 
+  library_address)
+VALUES (
+  1, 10, 7, 5, 2, 1, TRUE, 'short', '12h', 25, 'en', TRUE, 'dashboard', 'comfortable',
+  'FEU Roosevelt Library', 'library@feuroosevelt.edu.ph', '(02) 8373-0701',
+  'Circumferential Road, Cainta, Rizal'
+) ON DUPLICATE KEY UPDATE library_name=VALUES(library_name);
+
+-- Insert default account
+INSERT INTO account (id, display_name, username, email, role, status, last_login)
+VALUES (
+  1, 'Mikhail D. Pabular', 'm.pabular', 'r2025038451n@feuroosevelt.edu.ph', 'Head Librarian', 'Active', NOW()
+) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name);
+
+-- Insert default notification preferences
+INSERT INTO notif_prefs (id, due_notification, overdue_notification, new_user_notification, 
+  returns_notification, system_notification)
+VALUES (1, TRUE, TRUE, FALSE, TRUE, TRUE) 
+ON DUPLICATE KEY UPDATE due_notification=VALUES(due_notification);
+
+-- Insert books (BOOK_SEED from script.js)
+INSERT INTO books (id, title, author, category, isbn, year, location, status, format, cover_url, description) VALUES
+('BK-0001', 'The Great Gatsby', 'F. Scott Fitzgerald', 'Literature', '9780743273565', 1925, 'A-12', 'Available', 'Hardcover', 
+  'https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg', 'A glittering, doomed summer on Long Island, and a man who reinvents himself for a love that''s already gone.'),
+('BK-0002', 'Clean Code', 'Robert C. Martin', 'Technology', '9780132350884', 2008, 'B-04', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780132350884-L.jpg', 'A practical field guide to writing software that''s easy to read, change, and trust a year from now.'),
+('BK-0003', 'Atomic Habits', 'James Clear', 'Psychology', '9780735211292', 2018, 'C-07', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg', 'A clear framework for building good habits and breaking bad ones through small, compounding changes.'),
+('BK-0004', 'A Brief History of Time', 'Stephen Hawking', 'Science', '9780553380163', 1988, 'D-19', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780553380163-L.jpg', 'An accessible tour of cosmology — from the Big Bang to black holes — for readers without a physics background.'),
+('BK-0005', 'Sapiens', 'Yuval Noah Harari', 'History', '9780062316097', 2011, 'D-02', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg', 'A sweeping look at how Homo sapiens came to dominate the planet, told through myths, money, and empires.'),
+('BK-0006', 'Meditations', 'Marcus Aurelius', 'Philosophy', '9780140449334', 180, 'E-11', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780140449334-L.jpg', 'The private notebook of a Roman emperor, working out how to stay calm, fair, and useful.'),
+('BK-0007', 'Leaves of Grass', 'Walt Whitman', 'Literature', '9781593080834', 1855, 'F-03', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/id/13323903-L.jpg', 'An expansive, restless collection that helped define the sound of American poetry.'),
+('BK-0008', 'The Design of Everyday Things', 'Don Norman', 'Arts', '9780465050659', 2013, 'B-18', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780465050659-L.jpg', 'Why so many everyday objects confuse us, and what good design owes the people who use it.'),
+('BK-0009', '1984', 'George Orwell', 'Literature', '9780451524935', 1949, 'A-01', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg', 'A totalitarian future where language itself is rewritten to make dissent unthinkable.'),
+('BK-0010', 'The Pragmatic Programmer', 'Andrew Hunt', 'Technology', '9780135957059', 2019, 'B-09', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780135957059-L.jpg', 'Field-tested habits and principles for writing adaptable, well-crafted software.'),
+('BK-0011', 'Deep Work', 'Cal Newport', 'Business', '9781455586691', 2016, 'C-14', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/isbn/9781455586691-L.jpg', 'An argument for protecting long stretches of undistracted focus in an economy built to fragment it.'),
+('BK-0012', 'Cosmos', 'Carl Sagan', 'Science', '9780345539434', 1980, 'D-06', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780345539434-L.jpg', 'A warm, wide-eyed guided tour of the universe and our small, remarkable place in it.'),
+('BK-0013', 'Guns, Germs, and Steel', 'Jared Diamond', 'History', '9780393317558', 1997, 'D-22', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9780393317558-L.jpg', 'An attempt to explain why history''s advantages fell to some societies and not others.'),
+('BK-0014', 'The Republic', 'Plato', 'Philosophy', '9780140449140', -380, 'E-02', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/id/2324117-L.jpg', 'A dialogue on justice, the soul, and what an ideal city would actually require.'),
+('BK-0015', 'Ariel', 'Sylvia Plath', 'Literature', '9780061148518', 1965, 'F-08', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/id/33280-L.jpg', 'Intense, precise poems written in a final, prolific burst near the end of the poet''s life.'),
+('BK-0016', 'Don''t Make Me Think', 'Steve Krug', 'Arts', '9780321965516', 2000, 'B-21', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780321965516-L.jpg', 'A short, practical case for usability: if people have to stop and think, the design has failed.'),
+('BK-0017', 'To Kill a Mockingbird', 'Harper Lee', 'Literature', '9780061120084', 1960, 'A-07', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9780061120084-L.jpg', 'A small Southern town, a wrongful trial, and a child''s early lessons in conscience.'),
+('BK-0018', 'Refactoring', 'Martin Fowler', 'Technology', '9780134757599', 1999, 'B-13', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780134757599-L.jpg', 'A catalog of small, safe steps for improving the structure of existing code.'),
+('BK-0019', 'The Power of Habit', 'Charles Duhigg', 'Business', '9780812981605', 2012, 'C-03', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/isbn/9780812981605-L.jpg', 'How habits form, why they''re hard to break, and how organizations use that to their advantage.'),
+('BK-0020', 'Astrophysics for People in a Hurry', 'Neil deGrasse Tyson', 'Science', '9780393609394', 2017, 'D-25', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780393609394-L.jpg', 'Big cosmic ideas delivered in short, digestible chapters for a busy reader.'),
+('BK-0021', 'The Silk Roads', 'Peter Frankopan', 'History', '9781101912379', 2015, 'D-11', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9781101912379-L.jpg', 'A retelling of world history centered on the trade routes linking East and West.'),
+('BK-0022', 'Beyond Good and Evil', 'Friedrich Nietzsche', 'Philosophy', '9780486298689', 1886, 'E-17', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780486298689-L.jpg', 'A provocation aimed at the moral assumptions philosophy usually leaves unquestioned.'),
+('BK-0023', 'The Waste Land', 'T.S. Eliot', 'Literature', '9780156948777', 1922, 'F-14', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/isbn/9780156948777-L.jpg', 'A fragmented, allusive modernist poem written in the shadow of a broken postwar world.'),
+('BK-0024', 'Emotional Design', 'Don Norman', 'Arts', '9780465051366', 2004, 'B-25', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780465051366-L.jpg', 'On why we love — or hate — the objects we use, and what feeling has to do with function.'),
+('BK-0025', 'Brave New World', 'Aldous Huxley', 'Literature', '9780060850524', 1932, 'A-15', 'Available', 'Hardcover',
+  'https://covers.openlibrary.org/b/isbn/9780060850524-L.jpg', 'A society engineered for comfort and stability, at the quiet cost of everything else.'),
+('BK-0026', 'Design Patterns', 'Erich Gamma', 'Technology', '9780201633610', 1994, 'B-01', 'Available', 'Paperback',
+  'https://covers.openlibrary.org/b/isbn/9780201633610-L.jpg', 'Reusable solutions to recurring problems in object-oriented software design.'),
+('BK-0027', 'Educated', 'Tara Westover', 'Psychology', '9780399590504', 2018, 'C-19', 'Available', 'E-book',
+  'https://covers.openlibrary.org/b/isbn/9780399590504-L.jpg', 'A memoir of growing up off the grid, and the long, disorienting road to a formal education.'),
+('BK-0028', 'The Selfish Gene', 'Richard Dawkins', 'Science', '9780198788607', 1976, 'D-14', 'Available', 'Audiobook',
+  'https://covers.openlibrary.org/b/isbn/9780198788607-L.jpg', 'A gene''s-eye view of evolution that reframed how a generation thought about natural selection.');
+
+-- Insert users (STUDENT_SEED from script.js)
+INSERT INTO users (id, last_name, first_name, middle_initial, program, year_level, contact, status) VALUES
+('2025-001', 'Dela Cruz', 'Juan', '', 'BSIT', 2, 'juan.delacruz@feuroosevelt.edu', 'Active'),
+('2025-002', 'Santos', 'Maria', '', 'BSIT', 2, 'maria.santos@feuroosevelt.edu', 'Active'),
+('2025-003', 'Bonifacio Jr.', 'Andres', '', 'BS Architecture', 3, 'andres.b@feuroosevelt.edu', 'Active'),
+('2025-004', 'Reyes', 'Liza', '', 'BS Psychology', 1, 'liza.reyes@feuroosevelt.edu', 'Active'),
+('2025-005', 'Mendoza', 'Carlo', '', 'BS Civil Engineering', 4, 'carlo.mendoza@feuroosevelt.edu', 'Active'),
+('2025-006', 'Villanueva', 'Bea', '', 'BS Nursing', 2, 'bea.villanueva@feuroosevelt.edu', 'Active'),
+('2025-007', 'Torres', 'Miguel', '', 'BSIT', 3, 'miguel.torres@feuroosevelt.edu', 'Active'),
+('2025-008', 'Ramos', 'Sofia', '', 'BS Biology', 1, 'sofia.ramos@feuroosevelt.edu', 'Active'),
+('2025-009', 'Cruz', 'Nathaniel', '', 'BS Accountancy', 4, 'nathaniel.cruz@feuroosevelt.edu', 'Active'),
+('2025-010', 'Garcia', 'Isabel', '', 'BS Architecture', 2, 'isabel.garcia@feuroosevelt.edu', 'Active'),
+('2025-011', 'Aquino', 'Rafael', '', 'BSIT', 1, 'rafael.aquino@feuroosevelt.edu', 'Active'),
+('2025-012', 'Ocampo', 'Camille', '', 'BS Psychology', 3, 'camille.ocampo@feuroosevelt.edu', 'Active'),
+('2025-013', 'Fernandez', 'Diego', '', 'BS Civil Engineering', 2, 'diego.fernandez@feuroosevelt.edu', 'Active'),
+('2025-014', 'Lim', 'Patricia', '', 'BS Nursing', 4, 'patricia.lim@feuroosevelt.edu', 'Active');
+
+-- Seed some active loans (transactions)
+INSERT INTO transactions (id, type, book_id, book_title, user_id, user_name, issue_date, due_date, return_date, fine, status) VALUES
+('TX-0001', 'issue', 'BK-0002', 'Clean Code', '2025-001', 'Dela Cruz, Juan', SUBDATE(CURDATE(), 2), ADDDATE(CURDATE(), 5), NULL, 0, 'Borrowed'),
+('TX-0002', 'issue', 'BK-0010', 'The Pragmatic Programmer', '2025-007', 'Torres, Miguel', SUBDATE(CURDATE(), 5), ADDDATE(CURDATE(), 2), NULL, 0, 'Borrowed'),
+('TX-0003', 'issue', 'BK-0018', 'Refactoring', '2025-003', 'Bonifacio Jr., Andres', SUBDATE(CURDATE(), 9), ADDDATE(CURDATE(), -2), NULL, 30, 'Overdue'),
+('TX-0004', 'issue', 'BK-0003', 'Atomic Habits', '2025-005', 'Mendoza, Carlo', SUBDATE(CURDATE(), 1), ADDDATE(CURDATE(), 6), NULL, 0, 'Borrowed'),
+('TX-0005', 'issue', 'BK-0020', 'Astrophysics for People in a Hurry', '2025-009', 'Cruz, Nathaniel', SUBDATE(CURDATE(), 12), ADDDATE(CURDATE(), -5), NULL, 60, 'Overdue'),
+('TX-0006', 'issue', 'BK-0026', 'Design Patterns', '2025-012', 'Ocampo, Camille', SUBDATE(CURDATE(), 4), ADDDATE(CURDATE(), 3), NULL, 0, 'Borrowed'),
+('TX-0007', 'issue', 'BK-0008', 'The Design of Everyday Things', '2025-014', 'Lim, Patricia', SUBDATE(CURDATE(), 15), ADDDATE(CURDATE(), -8), NULL, 80, 'Overdue'),
+('TX-0008', 'issue', 'BK-0012', 'Cosmos', '2025-002', 'Santos, Maria', SUBDATE(CURDATE(), 3), ADDDATE(CURDATE(), 4), NULL, 0, 'Borrowed'),
+('TX-0009', 'return', NULL, 'The Great Gatsby', NULL, 'Reyes, Liza', SUBDATE(CURDATE(), 10), SUBDATE(CURDATE(), 4), SUBDATE(CURDATE(), 3), 0, 'Returned'),
+('TX-0010', 'return', NULL, 'Sapiens', NULL, 'Ramos, Sofia', SUBDATE(CURDATE(), 14), SUBDATE(CURDATE(), 8), SUBDATE(CURDATE(), 6), 20, 'Returned'),
+('TX-0011', 'return', NULL, '1984', NULL, 'Cruz, Nathaniel', SUBDATE(CURDATE(), 9), SUBDATE(CURDATE(), 3), SUBDATE(CURDATE(), 2), 0, 'Returned'),
+('TX-0012', 'return', NULL, 'The Republic', NULL, 'Garcia, Isabel', SUBDATE(CURDATE(), 20), SUBDATE(CURDATE(), 14), SUBDATE(CURDATE(), 10), 0, 'Returned'),
+('TX-0013', 'return', NULL, 'Beyond Good and Evil', NULL, 'Aquino, Rafael', SUBDATE(CURDATE(), 12), SUBDATE(CURDATE(), 6), SUBDATE(CURDATE(), 4), 30, 'Returned'),
+('TX-0014', 'return', NULL, 'Brave New World', NULL, 'Mendoza, Carlo', SUBDATE(CURDATE(), 8), SUBDATE(CURDATE(), 2), SUBDATE(CURDATE(), 1), 0, 'Returned');
+
+-- Update book statuses to reflect active loans
+UPDATE books SET status = 'Borrowed', borrowed_by = '2025-001', issue_date = SUBDATE(CURDATE(), 2), due_date = ADDDATE(CURDATE(), 5) WHERE id = 'BK-0002';
+UPDATE books SET status = 'Borrowed', borrowed_by = '2025-007', issue_date = SUBDATE(CURDATE(), 5), due_date = ADDDATE(CURDATE(), 2) WHERE id = 'BK-0010';
+UPDATE books SET status = 'Overdue', borrowed_by = '2025-003', issue_date = SUBDATE(CURDATE(), 9), due_date = ADDDATE(CURDATE(), -2) WHERE id = 'BK-0018';
+UPDATE books SET status = 'Borrowed', borrowed_by = '2025-005', issue_date = SUBDATE(CURDATE(), 1), due_date = ADDDATE(CURDATE(), 6) WHERE id = 'BK-0003';
+UPDATE books SET status = 'Overdue', borrowed_by = '2025-009', issue_date = SUBDATE(CURDATE(), 12), due_date = ADDDATE(CURDATE(), -5) WHERE id = 'BK-0020';
+UPDATE books SET status = 'Borrowed', borrowed_by = '2025-012', issue_date = SUBDATE(CURDATE(), 4), due_date = ADDDATE(CURDATE(), 3) WHERE id = 'BK-0026';
+UPDATE books SET status = 'Overdue', borrowed_by = '2025-014', issue_date = SUBDATE(CURDATE(), 15), due_date = ADDDATE(CURDATE(), -8) WHERE id = 'BK-0008';
+UPDATE books SET status = 'Borrowed', borrowed_by = '2025-002', issue_date = SUBDATE(CURDATE(), 3), due_date = ADDDATE(CURDATE(), 4) WHERE id = 'BK-0012';
+
+ALTER TABLE books
+  ADD CONSTRAINT fk_books_borrowed_by
+  FOREIGN KEY (borrowed_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE transactions
+  ADD CONSTRAINT fk_transactions_book
+  FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE transactions
+  ADD CONSTRAINT fk_transactions_user
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE;

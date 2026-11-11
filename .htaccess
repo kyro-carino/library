@@ -1,0 +1,57 @@
+# FEU Roosevelt Library — web access restrictions (Apache 2.4 / XAMPP)
+# Place at the project root (htdocs/library/.htaccess).
+# Everything that protects files uses core directives only (no <IfModule>), so it cannot be silently
+# skipped when a module is missing. If AllowOverride is None these files are ignored entirely:
+# run  py tests/web_exposure_check.py  after every deployment to prove the protections are live.
+
+# Disable directory listing
+Options -Indexes
+
+# Block dotfiles (.env, .env.example, .git, etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Block version-control folders (the dotfile rule above only matches file NAMES, not .git/config)
+<If "%{REQUEST_URI} =~ m#/\.(git|svn|hg)(/|$)#">
+    Require all denied
+</If>
+
+# Block sensitive files and non-web artifacts
+<FilesMatch "\.(sql|bak|md|log|dump|sqlite3?|gz|zip|ini|env|example|sh|py|lock)$">
+    Require all denied
+</FilesMatch>
+
+# Server-side entry points that must never be requested directly
+<FilesMatch "^(config|bootstrap)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Security headers (defence in depth; the API sends its own as well)
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    # HSTS is only sent on genuine HTTPS responses
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+</IfModule>
+
+# Content-Security-Policy for the app pages (the PHP API sends its own, stricter policy).
+# Scripts may only come from this site (no inline scripts, no eval): that is what stops injected script from running.
+# Inline style attributes are still allowed because the interface uses them; images may come from any https site
+# (book covers are typed in by staff). It starts in REPORT-ONLY mode: the browser lists what it WOULD block in the
+# DevTools console but blocks nothing. After clicking through every page in both themes with no "[Report Only]"
+# messages, change the header name below from Content-Security-Policy-Report-Only to Content-Security-Policy.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html$">
+        Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    </FilesMatch>
+</IfModule>
+
+# PRODUCTION ONLY: redirect plain HTTP to HTTPS (leave commented on local XAMPP).
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
